@@ -1,0 +1,10 @@
+<br>
+<br>
+#### **This firmware is a fork from** [FLIPPER ZERO OFFICIAL FIRMWARE](https://github.com/flipperdevices/flipperzero-firmware) <br>
+and part take from: [DarkFlippers/unleashed-firmware](https://github.com/DarkFlippers/unleashed-firmware)<br>
+app from: https://github.com/xMasterX/all-the-plugins <br>
+and many other repository or source. <br>
+<br>
+<br>
+Non sono responsabile per qualsiasi uso illegale anche tentato di questo strumento.<br>
+<br>

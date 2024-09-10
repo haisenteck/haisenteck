@@ -1,0 +1,5 @@
+- **FreeRTOS**<br>
+<ul>
+	<li>Upgrade da versione v10.6.0 a v10.6.1</li>
+	<li>Upgrade da versione V10.5.1 a V10.6.0</li>
+</ul>

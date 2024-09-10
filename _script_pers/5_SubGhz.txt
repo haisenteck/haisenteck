@@ -1,0 +1,20 @@
+- **Sub-GHz**<br>
+<ul>
+	<li>Aggiunto AM_Q ai preset di utilizzo</li>
+	<li>Aggiunto TPMS ai preset di utilizzo</li>
+	<li>Aggiunto HONDA1 ai preset di utilizzo</li>
+	<li>Aggiunto HONDA2 ai preset di utilizzo</li>
+	<li>predisposizione per ulteriori wheather station e comandi dedicati. </li>
+	<li>SubGhz Rolling Flaws - app aggiunta grazie a https://github.com/jamisonderek/flipper-zero-tutorials </li>
+	<li>Subghz Shapshup - app aggiunta e corretto alcune parti di codice</li>
+	<li>aggiunto ulteriori protocolli ed effettuato un altro porting di protocollo weather station (2023/11/27)</li>
+	<li>correzione di protocolli subghz durante test approfonditi</li>
+	<li>update aggiornamento protocollo oregon2 da fap weather station 2023/12/09</li>
+	<li>Modifica driver CC1101 da Driver esterni a parser della fap principale Subghz velocizzando il tutto e riducendo alcune ridondanze di caricamento.</li>
+	<li>sistemazione protocollo Oregon2 con errori e crash del flipper in fase di ricezione</li>
+	<li>03/01/2024 - aggiunto gestione gps nel subghz (idea riadattata da progetto xtreme), abilitato salvataggio in file separato delle coordinate gps</li>
+	<li>aggiunto gestione salvataggio automatico segnali ricevuti</li>
+	<li>aggiunto cancellazione automatica segnali più vecchi per evitare il riempimento della memoria (grazie a unleashed).</li>
+	<li>aggiunti ulteriori 2 protocolli subghz derivati da weather station fap.</li>
+	<li>08/02/2024 - aggiornamento protocolli subghz base da unleashed.</li>
+	
