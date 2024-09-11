@@ -46,29 +46,58 @@ void subghz_file_encoder_worker_add_level_duration(
 }
 
 bool subghz_file_encoder_worker_data_parse(SubGhzFileEncoderWorker* instance, const char* strStart) {
+    char* str1;
+    int32_t temp_ds = 0;
+    bool res = false;
     // Line sample: "RAW_Data: -1, 2, -2..."
 
-    // Look for the key in the line
-    char* str = strstr(strStart, "RAW_Data: ");
-    bool res = false;
+    // Look for a key in the line
+    str1 = strstr(strStart, "RAW_Data: ");
+					 
 
-    if(str) {
+    if(str1 != NULL) {
         // Skip key
-        str = strchr(str, ' ');
+        str1 = strchr(str1, ' ');
 
-        // Parse next element
-        int32_t duration;
-        while(strint_to_int32(str, &str, &duration, 10) == StrintParseNoError) {
-            subghz_file_encoder_worker_add_level_duration(instance, duration);
-            if(*str == ',') str++; // could also be `\0`
+        // Check that there is still an element in the line
+						 
+        while(strchr(str1, ' ') != NULL) {
+            str1 = strchr(str1, ' ');
+														
+		 
+
+            // Skip space
+            str1 += 1;
+            //
+            temp_ds = atoi(str1);
+            if((temp_ds < -1000000) || (temp_ds > 1000000)) {
+                if(temp_ds > 0) {
+                    subghz_file_encoder_worker_add_level_duration(instance, (int32_t)100);
+                } else {
+                    subghz_file_encoder_worker_add_level_duration(instance, (int32_t)-100);
+                }
+                //FURI_LOG_I("PARSE", "Number overflow - %d", atoi(str1));
+            } else {
+                subghz_file_encoder_worker_add_level_duration(instance, temp_ds);
+            }
         }
-
         res = true;
     }
 
     return res;
 }
 
+void subghz_file_encoder_worker_get_text_progress(
+    SubGhzFileEncoderWorker* instance,
+    FuriString* output) {
+    UNUSED(output);
+    Stream* stream = flipper_format_get_raw_stream(instance->flipper_format);
+    size_t total_size = stream_size(stream);
+    size_t current_offset = stream_tell(stream);
+    size_t buffer_avail = furi_stream_buffer_bytes_available(instance->stream);
+
+    furi_string_printf(output, "%03u%%", 100 * (current_offset - buffer_avail) / total_size);
+}
 LevelDuration subghz_file_encoder_worker_get_level_duration(void* context) {
     furi_assert(context);
     SubGhzFileEncoderWorker* instance = context;

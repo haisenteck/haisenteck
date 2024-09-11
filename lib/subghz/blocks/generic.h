@@ -8,20 +8,45 @@
 #include <furi.h>
 #include <furi_hal.h>
 #include "../types.h"
+#include <locale/locale.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+#define WS_NO_ID 0xFFFFFFFF
+#define WS_NO_BATT 0xFF
+#define WS_NO_HUMIDITY 0xFF
+#define WS_NO_CHANNEL 0xFF
+#define WS_NO_BTN 0xFF
+#define WS_NO_TEMPERATURE -273.0f
+
+#define TPMS_NO_BATT 0xFF
+
 typedef struct SubGhzBlockGeneric SubGhzBlockGeneric;
 
 struct SubGhzBlockGeneric {
     const char* protocol_name;
+    float latitude;
+    float longitude;
     uint64_t data;
+    uint64_t data_2;
     uint32_t serial;
     uint16_t data_count_bit;
     uint8_t btn;
     uint32_t cnt;
+    uint8_t cnt_2;
+    uint32_t seed;
+	uint8_t battery_low;
+    uint8_t humidity;
+	uint32_t timestamp;
+	uint8_t channel;
+	uint32_t id;
+    float temp;
+	float pressure;
+	float temperature;
+	FuriString* result_ric;
+    FuriString* result_msg;
 };
 
 /**
@@ -49,8 +74,9 @@ SubGhzProtocolStatus subghz_block_generic_serialize(
  * @param flipper_format Pointer to a FlipperFormat instance
  * @return Status Error
  */
-SubGhzProtocolStatus
-    subghz_block_generic_deserialize(SubGhzBlockGeneric* instance, FlipperFormat* flipper_format);
+SubGhzProtocolStatus subghz_block_generic_deserialize(SubGhzBlockGeneric* instance, FlipperFormat* flipper_format);
+
+SubGhzProtocolStatus subghz_block_generic_deserialize_wheather(SubGhzBlockGeneric* instance, FlipperFormat* flipper_format);
 
 /**
  * Deserialize data SubGhzBlockGeneric.

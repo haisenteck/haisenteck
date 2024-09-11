@@ -2,6 +2,7 @@
 
 #include "assets_icons.h"
 #include "subghz/types.h"
+#include <math.h>
 #include <furi.h>
 #include <furi_hal.h>
 #include <input/input.h>
@@ -44,7 +45,7 @@ bool subghz_tx_start(SubGhz* subghz, FlipperFormat* flipper_format) {
             subghz->dialogs, "Error in protocol\nparameters\ndescription");
         break;
     case SubGhzTxRxStartTxStateErrorOnlyRx:
-        subghz_dialog_message_show_only_rx(subghz);
+        subghz_dialog_message_freq_error(subghz, true);
         break;
 
     default:
@@ -86,6 +87,8 @@ bool subghz_key_load(SubGhz* subghz, const char* file_path, bool show_dialog) {
     SubGhzLoadKeyState load_key_state = SubGhzLoadKeyStateParseErr;
     FuriString* temp_str = furi_string_alloc();
     uint32_t temp_data32;
+    float temp_lat = NAN; // NAN or 0.0?? because 0.0 is valid value
+    float temp_lon = NAN;
 
     do {
         stream_clean(fff_data_stream);
@@ -113,11 +116,19 @@ bool subghz_key_load(SubGhz* subghz, const char* file_path, bool show_dialog) {
             break;
         }
 
-        if(!subghz_txrx_radio_device_is_frequecy_valid(subghz->txrx, temp_data32)) {
-            FURI_LOG_E(TAG, "Frequency not supported");
+        if(!subghz_txrx_radio_device_is_frequency_valid(subghz->txrx, temp_data32)) {
+            FURI_LOG_E(TAG, "Frequency not supported on chosen radio module");
+            load_key_state = SubGhzLoadKeyStateUnsuportedFreq;
             break;
         }
 
+        // TODO: use different frequency allowed lists for differnet modules (non cc1101)
+        if(!furi_hal_subghz_is_tx_allowed(temp_data32)) {
+            FURI_LOG_E(TAG, "This frequency can only be used for RX");
+
+            load_key_state = SubGhzLoadKeyStateOnlyRx;
+            break;
+        }
         //Load preset
         if(!flipper_format_read_string(fff_data_file, "Preset", temp_str)) {
             FURI_LOG_E(TAG, "Missing Preset");
@@ -142,12 +153,23 @@ bool subghz_key_load(SubGhz* subghz, const char* file_path, bool show_dialog) {
                 break;
             }
         }
+
+        //Load latitute and longitude if present, strict mode to avoid reading the whole file twice
+        flipper_format_set_strict_mode(fff_data_file, true);
+        if(!flipper_format_read_float(fff_data_file, "Latitute", (float*)&temp_lat, 1) ||
+           !flipper_format_read_float(fff_data_file, "Longitude", (float*)&temp_lon, 1)) {
+            FURI_LOG_W(TAG, "Missing Latitude and Longitude (optional)");
+            flipper_format_rewind(fff_data_file);
+        }
+        flipper_format_set_strict_mode(fff_data_file, false);
         size_t preset_index =
             subghz_setting_get_inx_preset_by_name(setting, furi_string_get_cstr(temp_str));
         subghz_txrx_set_preset(
             subghz->txrx,
             furi_string_get_cstr(temp_str),
             temp_data32,
+            temp_lat,
+            temp_lon,
             subghz_setting_get_preset_data(setting, preset_index),
             subghz_setting_get_preset_data_size(setting, preset_index));
 
@@ -200,6 +222,18 @@ bool subghz_key_load(SubGhz* subghz, const char* file_path, bool show_dialog) {
         if(show_dialog) {
             dialog_message_show_storage_error(
                 subghz->dialogs, "Error in protocol\nparameters\ndescription");
+        }
+        return false;
+
+    case SubGhzLoadKeyStateUnsuportedFreq:
+        if(show_dialog) {
+            subghz_dialog_message_freq_error(subghz, false);
+        }
+        return false;
+
+    case SubGhzLoadKeyStateOnlyRx:
+        if(show_dialog) {
+            subghz_dialog_message_freq_error(subghz, true);
         }
         return false;
 
@@ -258,25 +292,20 @@ bool subghz_get_next_name_file(SubGhz* subghz, uint8_t max_len) {
     return res;
 }
 
-bool subghz_save_protocol_to_file(
-    SubGhz* subghz,
-    FlipperFormat* flipper_format,
-    const char* dev_file_name) {
+bool subghz_save_protocol_to_file(SubGhz* subghz, FlipperFormat* flipper_format, const char* dev_file_name) {
     furi_assert(subghz);
     furi_assert(flipper_format);
     furi_assert(dev_file_name);
 
     Storage* storage = furi_record_open(RECORD_STORAGE);
     Stream* flipper_format_stream = flipper_format_get_raw_stream(flipper_format);
-
     bool saved = false;
     FuriString* file_dir = furi_string_alloc();
-
     path_extract_dirname(dev_file_name, file_dir);
     do {
         //removing additional fields
-        flipper_format_delete_key(flipper_format, "Repeat");
-        flipper_format_delete_key(flipper_format, "Manufacture");
+        //flipper_format_delete_key(flipper_format, "Repeat");
+        //flipper_format_delete_key(flipper_format, "Manufacture");
 
         // Create subghz folder directory if necessary
         if(!storage_simply_mkdir(storage, furi_string_get_cstr(file_dir))) {

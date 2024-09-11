@@ -48,7 +48,7 @@ void subghz_frequency_analyzer_worker_set_pair_callback(
  * 
  * @param instance SubGhzFrequencyAnalyzerWorker instance
  */
-void subghz_frequency_analyzer_worker_start(SubGhzFrequencyAnalyzerWorker* instance);
+void subghz_frequency_analyzer_worker_start(SubGhzFrequencyAnalyzerWorker* instance, SubGhzTxRx* txrx);
 
 /** Stop SubGhzFrequencyAnalyzerWorker
  * 
@@ -61,3 +61,17 @@ void subghz_frequency_analyzer_worker_stop(SubGhzFrequencyAnalyzerWorker* instan
  * @return bool - true if running
  */
 bool subghz_frequency_analyzer_worker_is_running(SubGhzFrequencyAnalyzerWorker* instance);
+
+/** Set RSSI trigger level
+ * 
+ * @param instance SubGhzFrequencyAnalyzerWorker instance
+ * @param value RSSI level
+ */
+void subghz_frequency_analyzer_worker_set_trigger_level(SubGhzFrequencyAnalyzerWorker* instance, float value);
+
+/** Get RSSI trigger level
+ * 
+ * @param instance SubGhzFrequencyAnalyzerWorker instance
+ * @return RSSI trigger level
+ */
+float subghz_frequency_analyzer_worker_get_trigger_level(SubGhzFrequencyAnalyzerWorker* instance);

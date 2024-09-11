@@ -1,7 +1,8 @@
 #include "transmitter.h"
 
-#include "protocols/base.h"
 #include "registry.h"
+#include "protocols/base.h"
+#include "protocols/protocol_items.h"
 
 struct SubGhzTransmitter {
     const SubGhzProtocol* protocol;

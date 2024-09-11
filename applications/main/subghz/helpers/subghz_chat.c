@@ -2,7 +2,6 @@
 #include <lib/subghz/subghz_tx_rx_worker.h>
 
 #define TAG "SubGhzChat"
-
 #define SUBGHZ_CHAT_WORKER_TIMEOUT_BETWEEN_MESSAGES 500
 
 struct SubGhzChatWorker {
@@ -10,7 +9,7 @@ struct SubGhzChatWorker {
     SubGhzTxRxWorker* subghz_txrx;
 
     volatile bool worker_running;
-    volatile bool worker_stoping;
+    volatile bool worker_stopping;
     FuriMessageQueue* event_queue;
     uint32_t last_time_rx_data;
 

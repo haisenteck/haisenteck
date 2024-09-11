@@ -1,8 +1,10 @@
 #include "transmitter.h"
+#include "../subghz_i.h"
 
-#include <assets_icons.h>
 #include <input/input.h>
 #include <gui/elements.h>
+
+#include <lib/subghz/blocks/custom_btn.h>
 
 struct SubGhzViewTransmitter {
     View* view;
@@ -16,9 +18,12 @@ typedef struct {
     FuriString* key_str;
     bool show_button;
     SubGhzRadioDeviceType device_type;
+    FuriString* temp_button_id;
+    bool draw_temp_button;
     SubGhzViewTransmitterModelType model_type;
     IconAnimation* icon_int_ant;
     IconAnimation* icon_ext_ant;
+	
 } SubGhzViewTransmitterModel;
 
 void subghz_view_transmitter_set_callback(
@@ -71,7 +76,7 @@ void subghz_view_transmitter_set_model_type(
         { model->model_type = model_type; },
         true);
 }
-
+								  
 static void subghz_view_transmitter_button_right(Canvas* canvas, const char* str) {
     const uint8_t button_height = 12;
     const uint8_t vertical_offset = 3;
@@ -145,11 +150,13 @@ bool subghz_view_transmitter_input(InputEvent* event, void* context) {
                 furi_string_reset(model->frequency_str);
                 furi_string_reset(model->preset_str);
                 furi_string_reset(model->key_str);
+                furi_string_reset(model->temp_button_id);
                 model->show_button = false;
+                model->draw_temp_button = false;
             },
             false);
         return false;
-    }
+    } // Finish "Back" key processing
 
     with_view_model(
         subghz_transmitter->view,
@@ -161,33 +168,67 @@ bool subghz_view_transmitter_input(InputEvent* event, void* context) {
         },
         true);
 
-    if(can_be_sent && event->key == InputKeyOk && event->type == InputTypePress) {
-        with_view_model(
-            subghz_transmitter->view,
-            SubGhzViewTransmitterModel * model,
-            {
-                icon_animation_start(model->icon_int_ant);
-                icon_animation_start(model->icon_ext_ant);
-            },
-            false);
-        subghz_transmitter->callback(
-            SubGhzCustomEventViewTransmitterSendStart, subghz_transmitter->context);
-        return true;
-    } else if(can_be_sent && event->key == InputKeyOk && event->type == InputTypeRelease) {
-        with_view_model(
-            subghz_transmitter->view,
-            SubGhzViewTransmitterModel * model,
-            {
-                icon_animation_stop(model->icon_int_ant);
-                icon_animation_stop(model->icon_ext_ant);
-            },
-            false);
-        subghz_transmitter->callback(
-            SubGhzCustomEventViewTransmitterSendStop, subghz_transmitter->context);
-        return true;
-    } else if(can_be_sent && event->key == InputKeyRight && event->type == InputTypeShort) {
-        subghz_transmitter->callback(
-            SubGhzCustomEventViewTransmitterSendSave, subghz_transmitter->context);
+    if(can_be_sent) {
+        if(event->key == InputKeyOk && event->type == InputTypePress) {
+            subghz_custom_btn_set(SUBGHZ_CUSTOM_BTN_OK);
+            with_view_model(
+                subghz_transmitter->view,
+                SubGhzViewTransmitterModel * model,
+                {
+                    furi_string_reset(model->temp_button_id);
+                    model->draw_temp_button = false;
+                },
+                true);
+            subghz_transmitter->callback(
+                SubGhzCustomEventViewTransmitterSendStart, subghz_transmitter->context);
+            return true;
+        } else if(event->key == InputKeyOk && event->type == InputTypeRelease) {
+            subghz_transmitter->callback(
+                SubGhzCustomEventViewTransmitterSendStop, subghz_transmitter->context);
+            return true;
+        } // Finish "OK" key processing
+
+        if(subghz_custom_btn_is_allowed()) {
+            uint8_t temp_btn_id;
+            if(event->key == InputKeyUp) {
+                temp_btn_id = SUBGHZ_CUSTOM_BTN_UP;
+            } else if(event->key == InputKeyDown) {
+                temp_btn_id = SUBGHZ_CUSTOM_BTN_DOWN;
+            } else if(event->key == InputKeyLeft) {
+                temp_btn_id = SUBGHZ_CUSTOM_BTN_LEFT;
+            } else if(event->key == InputKeyRight) {
+                temp_btn_id = SUBGHZ_CUSTOM_BTN_RIGHT;
+            } else {
+                // Finish processing if the button is different
+                return true;
+            }
+
+            if(event->type == InputTypePress) {
+                with_view_model(
+                    subghz_transmitter->view,
+                    SubGhzViewTransmitterModel * model,
+                    {
+                        furi_string_reset(model->temp_button_id);
+                        if(subghz_custom_btn_get_original() != 0) {
+                            if(subghz_custom_btn_set(temp_btn_id)) {
+                                furi_string_printf(
+                                    model->temp_button_id,
+                                    "%01X",
+                                    subghz_custom_btn_get_original());
+                                model->draw_temp_button = true;
+                            }
+                        }
+                    },
+                    true);
+                subghz_transmitter->callback(
+                    SubGhzCustomEventViewTransmitterSendStart, subghz_transmitter->context);
+                return true;
+            } else if(event->type == InputTypeRelease) {
+                subghz_transmitter->callback(
+                    SubGhzCustomEventViewTransmitterSendStop, subghz_transmitter->context);
+                return true;
+            }
+        }
     }
 
     return true;
@@ -201,7 +242,7 @@ void subghz_view_transmitter_exit(void* context) {
     furi_assert(context);
 }
 
-SubGhzViewTransmitter* subghz_view_transmitter_alloc(void) {
+SubGhzViewTransmitter* subghz_view_transmitter_alloc() {
     SubGhzViewTransmitter* subghz_transmitter = malloc(sizeof(SubGhzViewTransmitter));
 
     // View allocation and configuration
@@ -222,6 +263,7 @@ SubGhzViewTransmitter* subghz_view_transmitter_alloc(void) {
             model->frequency_str = furi_string_alloc();
             model->preset_str = furi_string_alloc();
             model->key_str = furi_string_alloc();
+            model->temp_button_id = furi_string_alloc();
             model->model_type = SubGhzViewTransmitterModelTypeTx;
             model->icon_int_ant = icon_animation_alloc(&A_SubGhz_Internal_ant);
             view_tie_icon_animation(subghz_transmitter->view, model->icon_int_ant);

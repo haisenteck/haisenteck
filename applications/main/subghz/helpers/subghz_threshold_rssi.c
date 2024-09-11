@@ -1,6 +1,7 @@
 #include "subghz_threshold_rssi.h"
 #include "../views/subghz_read_raw.h"
 #include <float_tools.h>
+#include "../subghz_i.h"
 
 #define TAG "SubGhzThresholdRssi"
 

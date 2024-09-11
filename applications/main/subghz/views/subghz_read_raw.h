@@ -4,8 +4,6 @@
 #include "../helpers/subghz_types.h"
 #include "../helpers/subghz_custom_event.h"
 
-#define SUBGHZ_RAW_THRESHOLD_MIN -90.0f
-
 typedef struct SubGhzReadRAW SubGhzReadRAW;
 
 typedef void (*SubGhzReadRAWCallback)(SubGhzCustomEvent event, void* context);
@@ -28,7 +26,7 @@ void subghz_read_raw_set_callback(
     SubGhzReadRAWCallback callback,
     void* context);
 
-SubGhzReadRAW* subghz_read_raw_alloc(void);
+SubGhzReadRAW* subghz_read_raw_alloc(bool raw_send_only);
 
 void subghz_read_raw_free(SubGhzReadRAW* subghz_static);
 

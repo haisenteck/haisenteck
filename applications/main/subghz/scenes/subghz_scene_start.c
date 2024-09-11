@@ -1,13 +1,15 @@
 #include "../subghz_i.h"
 #include <dolphin/dolphin.h>
 
+#include <lib/subghz/protocols/raw.h>
+
 enum SubmenuIndex {
     SubmenuIndexRead = 10,
     SubmenuIndexSaved,
     SubmenuIndexAddManually,
     SubmenuIndexFrequencyAnalyzer,
     SubmenuIndexReadRAW,
-    SubmenuIndexShowRegionInfo,
+    SubmenuIndexExtSettings,
     SubmenuIndexRadioSetting,
 };
 
@@ -21,6 +23,7 @@ void subghz_scene_start_on_enter(void* context) {
     if(subghz->state_notifications == SubGhzNotificationStateStarting) {
         subghz->state_notifications = SubGhzNotificationStateIDLE;
     }
+
     submenu_add_item(
         subghz->submenu, "Read", SubmenuIndexRead, subghz_scene_start_submenu_callback, subghz);
     submenu_add_item(
@@ -45,14 +48,8 @@ void subghz_scene_start_on_enter(void* context) {
         subghz);
     submenu_add_item(
         subghz->submenu,
-        "Region Information",
-        SubmenuIndexShowRegionInfo,
-        subghz_scene_start_submenu_callback,
-        subghz);
-    submenu_add_item(
-        subghz->submenu,
         "Radio Settings",
-        SubmenuIndexRadioSetting,
+        SubmenuIndexExtSettings,
         subghz_scene_start_submenu_callback,
         subghz);
     submenu_set_selected_item(
@@ -96,15 +93,10 @@ bool subghz_scene_start_on_event(void* context, SceneManagerEvent event) {
             scene_manager_next_scene(subghz->scene_manager, SubGhzSceneFrequencyAnalyzer);
             dolphin_deed(DolphinDeedSubGhzFrequencyAnalyzer);
             return true;
-        } else if(event.event == SubmenuIndexShowRegionInfo) {
+        } else if(event.event == SubmenuIndexExtSettings) {
             scene_manager_set_scene_state(
-                subghz->scene_manager, SubGhzSceneStart, SubmenuIndexShowRegionInfo);
-            scene_manager_next_scene(subghz->scene_manager, SubGhzSceneRegionInfo);
-            return true;
-        } else if(event.event == SubmenuIndexRadioSetting) {
-            scene_manager_set_scene_state(
-                subghz->scene_manager, SubGhzSceneStart, SubmenuIndexRadioSetting);
-            scene_manager_next_scene(subghz->scene_manager, SubGhzSceneRadioSettings);
+                subghz->scene_manager, SubGhzSceneStart, SubmenuIndexExtSettings);
+            scene_manager_next_scene(subghz->scene_manager, SubGhzSceneExtModuleSettings);
             return true;
         }
     }

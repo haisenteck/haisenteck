@@ -28,6 +28,11 @@
 #define SUBGHZ_NICE_FLOR_S_DIR_NAME   EXT_PATH("subghz/assets/nice_flor_s")
 #define SUBGHZ_ALUTECH_AT_4N_DIR_NAME EXT_PATH("subghz/assets/alutech_at_4n")
 
+//GPS
+#define SUBGHZ_GPS_TESTO "\nCOORDINATE GPS"
+#define SUBGHZ_GPS_LATITUDINE "\nLatitude: "
+#define SUBGHZ_GPS_LONGITUDINE "\nLongitudine: "
+
 typedef struct SubGhzProtocolRegistry SubGhzProtocolRegistry;
 typedef struct SubGhzEnvironment SubGhzEnvironment;
 
@@ -37,6 +42,8 @@ typedef struct {
     uint32_t frequency;
     uint8_t* data;
     size_t data_size;
+    float latitude;
+    float longitude;
 } SubGhzRadioPreset;
 
 typedef enum {
@@ -59,6 +66,8 @@ typedef enum {
     SubGhzProtocolStatusErrorEncoderGetUpload = (-12), ///< Payload encoder failure
     // Special Values
     SubGhzProtocolStatusErrorProtocolNotFound = (-13), ///< Protocol not found
+    SubGhzProtocolStatusErrorParserLatitude = (-14), ///< Missing `Latitude`
+    SubGhzProtocolStatusErrorParserLongitude = (-15), ///< Missing `Longitude`
     SubGhzProtocolStatusReserved = 0x7FFFFFFF, ///< Prevents enum down-size compiler optimization.
 } SubGhzProtocolStatus;
 
@@ -110,6 +119,7 @@ typedef enum {
     SubGhzProtocolTypeRAW,
     SubGhzProtocolWeatherStation,
     SubGhzProtocolCustom,
+    SubGhzProtocolTypeBinRAW,
 } SubGhzProtocolType;
 
 typedef enum {
@@ -124,6 +134,11 @@ typedef enum {
     SubGhzProtocolFlag_Load = (1 << 8),
     SubGhzProtocolFlag_Send = (1 << 9),
     SubGhzProtocolFlag_BinRAW = (1 << 10),
+    SubGhzProtocolFlag_StarLine = (1 << 11),
+    SubGhzProtocolFlag_AutoAlarms = (1 << 12),
+    SubGhzProtocolFlag_Magellan = (1 << 13),
+    SubGhzProtocolFlag_Princeton = (1 << 14),
+    SubGhzProtocolFlag_NiceFlorS = (1 << 15),
 } SubGhzProtocolFlag;
 
 struct SubGhzProtocol {

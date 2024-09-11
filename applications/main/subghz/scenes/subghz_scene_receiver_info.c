@@ -1,79 +1,137 @@
 #include "../subghz_i.h"
-#include "../helpers/subghz_custom_event.h"
-#include "../views/transmitter.h"
 
-void subghz_scene_receiver_info_callback(SubGhzCustomEvent event, void* context) {
+#include <lib/subghz/blocks/custom_btn.h>
+
+#define TAG "SubGhzSceneReceiverInfo"
+
+void subghz_scene_receiver_info_callback(GuiButtonType result, InputType type, void* context) {
     furi_assert(context);
     SubGhz* subghz = context;
-    view_dispatcher_send_custom_event(subghz->view_dispatcher, event);
+    if((result == GuiButtonTypeCenter) && (type == InputTypePress)) {
+        view_dispatcher_send_custom_event(
+            subghz->view_dispatcher, SubGhzCustomEventSceneReceiverInfoTxStart);
+    } else if((result == GuiButtonTypeCenter) && (type == InputTypeRelease)) {
+        view_dispatcher_send_custom_event(
+            subghz->view_dispatcher, SubGhzCustomEventSceneReceiverInfoTxStop);
+    } else if((result == GuiButtonTypeRight) && (type == InputTypeShort)) {
+        view_dispatcher_send_custom_event(
+            subghz->view_dispatcher, SubGhzCustomEventSceneReceiverInfoSave);
+    } else if(
+        (result == GuiButtonTypeLeft) && (type == InputTypeShort) &&
+        subghz->last_settings->gps_baudrate != 0) {
+        view_dispatcher_send_custom_event(
+            subghz->view_dispatcher, SubGhzCustomEventSceneReceiverInfoSats);
+    }
 }
 
 static bool subghz_scene_receiver_info_update_parser(void* context) {
     SubGhz* subghz = context;
-
     if(subghz_txrx_load_decoder_by_name_protocol(
            subghz->txrx,
            subghz_history_get_protocol_name(subghz->history, subghz->idx_menu_chosen))) {
-        // we are trying to deserialize without checking for errors, since it is assumed that we just received this chignal
-        subghz_protocol_decoder_base_deserialize(
-            subghz_txrx_get_decoder(subghz->txrx),
-            subghz_history_get_raw_data(subghz->history, subghz->idx_menu_chosen));
-
-        SubGhzRadioPreset* preset =
-            subghz_history_get_radio_preset(subghz->history, subghz->idx_menu_chosen);
+        // we are trying to deserialize without checking for errors, since it is assumed that we just received this signal
+        subghz_protocol_decoder_base_deserialize(subghz_txrx_get_decoder(subghz->txrx), subghz_history_get_raw_data(subghz->history, subghz->idx_menu_chosen));
+        SubGhzRadioPreset* preset = subghz_history_get_radio_preset(subghz->history, subghz->idx_menu_chosen);
         subghz_txrx_set_preset(
             subghz->txrx,
             furi_string_get_cstr(preset->name),
             preset->frequency,
+            0,
+            0,
             preset->data,
             preset->data_size);
-
-        FuriString* key_str = furi_string_alloc();
-        FuriString* frequency_str = furi_string_alloc();
-        FuriString* modulation_str = furi_string_alloc();
-
-        subghz_protocol_decoder_base_get_string(subghz_txrx_get_decoder(subghz->txrx), key_str);
-        subghz_txrx_get_frequency_and_modulation(subghz->txrx, frequency_str, modulation_str);
-        subghz_view_transmitter_add_data_to_show(
-            subghz->subghz_transmitter,
-            furi_string_get_cstr(key_str),
-            furi_string_get_cstr(frequency_str),
-            furi_string_get_cstr(modulation_str),
-            subghz_txrx_protocol_is_transmittable(subghz->txrx, true));
-
-        furi_string_free(frequency_str);
-        furi_string_free(modulation_str);
-        furi_string_free(key_str);
-
-        subghz_view_transmitter_set_radio_device_type(
-            subghz->subghz_transmitter, subghz_txrx_radio_device_get(subghz->txrx));
-        subghz_view_transmitter_set_model_type(
-            subghz->subghz_transmitter, SubGhzViewTransmitterModelTypeInfo);
 
         return true;
     }
     return false;
 }
 
-void subghz_scene_receiver_info_on_enter(void* context) {
-    SubGhz* subghz = context;
+void subghz_scene_receiver_info_draw_widget(SubGhz* subghz) {
     if(subghz_scene_receiver_info_update_parser(subghz)) {
+        FuriString* frequency_str = furi_string_alloc();
+        FuriString* modulation_str = furi_string_alloc();
+        FuriString* text = furi_string_alloc();
+
+        subghz_txrx_get_frequency_and_modulation(
+            subghz->txrx, frequency_str, modulation_str, false);
+        widget_add_string_element(
+            subghz->widget,
+            78,
+            0,
+            AlignLeft,
+            AlignTop,
+            FontSecondary,
+            furi_string_get_cstr(frequency_str));
+
+        widget_add_string_element(
+            subghz->widget,
+            113,
+            0,
+            AlignLeft,
+            AlignTop,
+            FontSecondary,
+            furi_string_get_cstr(modulation_str));
+        subghz_protocol_decoder_base_get_string(subghz_txrx_get_decoder(subghz->txrx), text);
+        widget_add_string_multiline_element(
+            subghz->widget, 0, 0, AlignLeft, AlignTop, FontSecondary, furi_string_get_cstr(text));
+
+        if(subghz->last_settings->gps_baudrate != 0) {
+            widget_add_button_element(
+                subghz->widget,
+                GuiButtonTypeLeft,
+                "Geo",
+                subghz_scene_receiver_info_callback,
+                subghz);
+        }
+
+        furi_string_free(frequency_str);
+        furi_string_free(modulation_str);
+        furi_string_free(text);
+
+        if(subghz_txrx_protocol_is_serializable(subghz->txrx)) {
+            widget_add_button_element(
+                subghz->widget,
+                GuiButtonTypeRight,
+                "Save",
+                subghz_scene_receiver_info_callback,
+                subghz);
+        }
+        // Removed static check
+        if(subghz_txrx_protocol_is_transmittable(subghz->txrx, false)) {
+            widget_add_button_element(
+                subghz->widget,
+                GuiButtonTypeCenter,
+                "Send",
+                subghz_scene_receiver_info_callback,
+                subghz);
+        }
     } else {
-        view_dispatcher_send_custom_event(
-            subghz->view_dispatcher, SubGhzCustomEventSceneShowErrorSub);
+        widget_add_icon_element(subghz->widget, 37, 15, &I_Scanning_123x52);
+        widget_add_string_element(
+            subghz->widget, 13, 8, AlignLeft, AlignBottom, FontSecondary, "Error history parse.");
     }
 
-    subghz_view_transmitter_set_callback(
-        subghz->subghz_transmitter, subghz_scene_receiver_info_callback, subghz);
+    view_dispatcher_switch_to_view(subghz->view_dispatcher, SubGhzViewIdWidget);
+}
 
-    subghz->state_notifications = SubGhzNotificationStateIDLE;
-    view_dispatcher_switch_to_view(subghz->view_dispatcher, SubGhzViewIdTransmitter);
+void subghz_scene_receiver_info_on_enter(void* context) {
+    SubGhz* subghz = context;
+    subghz_custom_btns_reset();
+    subghz_scene_receiver_info_draw_widget(subghz);
+    if(!subghz_history_get_text_space_left(subghz->history, NULL, 0)) {
+        subghz->state_notifications = SubGhzNotificationStateRx;
+    }
+	//-----------------------------------------------------------------------------------------------------------------------
+	if(subghz->last_settings->autosave_text == true && subghz->last_settings->autosave_auto == true) {
+		view_dispatcher_send_custom_event(subghz->view_dispatcher, SubGhzCustomEventSceneReceiverInfoSave);
+	}
+	//-----------------------------------------------------------------------------------------------------------------------
 }
 
 bool subghz_scene_receiver_info_on_event(void* context, SceneManagerEvent event) {
     SubGhz* subghz = context;
     if(event.type == SceneManagerEventTypeCustom) {
-        if(event.event == SubGhzCustomEventViewTransmitterSendStart) {
+        if(event.event == SubGhzCustomEventSceneReceiverInfoTxStart) {
             if(!subghz_scene_receiver_info_update_parser(subghz)) {
                 return false;
             }
@@ -89,16 +147,24 @@ bool subghz_scene_receiver_info_on_event(void* context, SceneManagerEvent event)
                 subghz->state_notifications = SubGhzNotificationStateTx;
             }
             return true;
-        } else if(event.event == SubGhzCustomEventViewTransmitterSendStop) {
+        } else if(event.event == SubGhzCustomEventSceneReceiverInfoTxStop) {
             //CC1101 Stop Tx -> Start RX
             subghz->state_notifications = SubGhzNotificationStateIDLE;
 
-            subghz_txrx_rx_start(subghz->txrx);
+            widget_reset(subghz->widget);
+            subghz_scene_receiver_info_draw_widget(subghz);
 
-            subghz_txrx_hopper_unpause(subghz->txrx);
-            subghz->state_notifications = SubGhzNotificationStateRx;
+            subghz_txrx_stop(subghz->txrx);
+            if(!scene_manager_has_previous_scene(subghz->scene_manager, SubGhzSceneDecodeRAW)) {
+                subghz_txrx_rx_start(subghz->txrx);
+
+                subghz_txrx_hopper_unpause(subghz->txrx);
+                if(!subghz_history_get_text_space_left(subghz->history, NULL, 0)) {
+                    subghz->state_notifications = SubGhzNotificationStateRx;
+                }
+            }
             return true;
-        } else if(event.event == SubGhzCustomEventViewTransmitterSendSave) {
+        } else if(event.event == SubGhzCustomEventSceneReceiverInfoSave) {
             //CC1101 Stop RX -> Save
             subghz->state_notifications = SubGhzNotificationStateIDLE;
             subghz_txrx_hopper_set_state(subghz->txrx, SubGhzHopperStateOFF);
@@ -110,14 +176,18 @@ bool subghz_scene_receiver_info_on_event(void* context, SceneManagerEvent event)
 
             if(subghz_txrx_protocol_is_serializable(subghz->txrx)) {
                 subghz_file_name_clear(subghz);
+
                 scene_manager_next_scene(subghz->scene_manager, SubGhzSceneSaveName);
             }
             return true;
-        } else if(event.event == SubGhzCustomEventSceneShowErrorSub) {
-            furi_string_set(subghz->error_str, "Error history parse.");
-            scene_manager_next_scene(subghz->scene_manager, SubGhzSceneShowErrorSub);
+        } else if(event.event == SubGhzCustomEventSceneReceiverInfoSats) {
+            if(subghz->last_settings->gps_baudrate != 0) {
+                scene_manager_next_scene(subghz->scene_manager, SubGhzSceneShowGps);
+                return true;
+            } else {
+                return false;
+            }
         }
-
     } else if(event.type == SceneManagerEventTypeTick) {
         if(subghz_txrx_hopper_get_state(subghz->txrx) != SubGhzHopperStateOFF) {
             subghz_txrx_hopper_update(subghz->txrx);
@@ -127,7 +197,15 @@ bool subghz_scene_receiver_info_on_event(void* context, SceneManagerEvent event)
             notification_message(subghz->notifications, &sequence_blink_magenta_10);
             break;
         case SubGhzNotificationStateRx:
-            notification_message(subghz->notifications, &sequence_blink_cyan_10);
+            if(subghz->last_settings->gps_baudrate != 0) {
+                if(subghz->gps->satellites > 0) {
+                    notification_message(subghz->notifications, &sequence_blink_green_10);
+                } else {
+                    notification_message(subghz->notifications, &sequence_blink_red_10);
+                }
+            } else {
+                notification_message(subghz->notifications, &sequence_blink_cyan_10);
+            }
             break;
         case SubGhzNotificationStateRxDone:
             notification_message(subghz->notifications, &sequence_blink_green_100);
@@ -142,5 +220,7 @@ bool subghz_scene_receiver_info_on_event(void* context, SceneManagerEvent event)
 
 void subghz_scene_receiver_info_on_exit(void* context) {
     SubGhz* subghz = context;
+
     widget_reset(subghz->widget);
+    subghz_txrx_reset_dynamic_and_custom_btns(subghz->txrx);
 }

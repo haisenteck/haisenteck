@@ -117,3 +117,9 @@ const char*
         return NULL;
     }
 }
+
+void subghz_environment_reset_keeloq(SubGhzEnvironment* instance) {
+    furi_check(instance);
+
+    subghz_keystore_reset_kl(instance->keystore);
+}

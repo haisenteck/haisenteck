@@ -1,6 +1,7 @@
 #include "generic.h"
 #include <lib/toolbox/stream/stream.h>
 #include <lib/flipper_format/flipper_format_i.h>
+#include "../weather_station_types.h"
 
 #define TAG "SubGhzBlockGeneric"
 
@@ -8,12 +9,20 @@ void subghz_block_generic_get_preset_name(const char* preset_name, FuriString* p
     const char* preset_name_temp;
     if(!strcmp(preset_name, "AM270")) {
         preset_name_temp = "FuriHalSubGhzPresetOok270Async";
+    } else if(!strcmp(preset_name, "AM_Q")) {
+        preset_name_temp = "FuriHalSubGhzPresetOok650Async_q";
     } else if(!strcmp(preset_name, "AM650")) {
         preset_name_temp = "FuriHalSubGhzPresetOok650Async";
+    } else if(!strcmp(preset_name, "TPMS")) {
+        preset_name_temp = "FuriHalSubGhzPresetTPMS";
     } else if(!strcmp(preset_name, "FM238")) {
         preset_name_temp = "FuriHalSubGhzPreset2FSKDev238Async";
     } else if(!strcmp(preset_name, "FM476")) {
         preset_name_temp = "FuriHalSubGhzPreset2FSKDev476Async";
+	} else if(!strcmp(preset_name, "HONDA1")) {
+        preset_name_temp = "FuriHalSubGhzPresetHONDA1";
+	} else if(!strcmp(preset_name, "HONDA2")) {
+        preset_name_temp = "FuriHalSubGhzPresetHONDA2";
     } else {
         preset_name_temp = "FuriHalSubGhzPresetCustom";
     }
@@ -64,6 +73,16 @@ SubGhzProtocolStatus subghz_block_generic_serialize(
                 break;
             }
         }
+		if(!flipper_format_write_float(flipper_format, "Latitute", &preset->latitude, 1)) {
+            FURI_LOG_E(TAG, "Unable to add Latitute");
+            res = SubGhzProtocolStatusErrorParserLatitude;
+            break;
+        }
+        if(!flipper_format_write_float(flipper_format, "Longitude", &preset->longitude, 1)) {
+            FURI_LOG_E(TAG, "Unable to add Longitude");
+            res = SubGhzProtocolStatusErrorParserLongitude;
+            break;
+        }
         if(!flipper_format_write_string_cstr(flipper_format, "Protocol", instance->protocol_name)) {
             FURI_LOG_E(TAG, "Unable to add Protocol");
             res = SubGhzProtocolStatusErrorParserProtocolName;
@@ -86,14 +105,23 @@ SubGhzProtocolStatus subghz_block_generic_serialize(
             res = SubGhzProtocolStatusErrorParserKey;
             break;
         }
+
+        // Nice One - Manual adding support
+        if(instance->data_count_bit == 72 &&
+           (strcmp(instance->protocol_name, "Nice FloR-S") == 0)) {
+            uint32_t temp = (instance->data_2 >> 4) & 0xFFFFF;
+            if(!flipper_format_write_uint32(flipper_format, "Data", &temp, 1)) {
+                FURI_LOG_E(TAG, "Unable to add Data");
+                break;
+            }
+        }
         res = SubGhzProtocolStatusOk;
     } while(false);
     furi_string_free(temp_str);
     return res;
 }
 
-SubGhzProtocolStatus
-    subghz_block_generic_deserialize(SubGhzBlockGeneric* instance, FlipperFormat* flipper_format) {
+SubGhzProtocolStatus subghz_block_generic_deserialize(SubGhzBlockGeneric* instance, FlipperFormat* flipper_format) {
     furi_check(instance);
 
     SubGhzProtocolStatus res = SubGhzProtocolStatusError;
